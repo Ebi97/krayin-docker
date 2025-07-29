@@ -1,65 +1,71 @@
-version: "3.8"
-
 services:
-  krayin-php-apache:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-      args:
-        container_project_path: /var/www/html
-        uid: 1000
-        user: www-data
-    image: krayin-php-apache
-    container_name: krayin-php-apache
-    ports:
-      - "8081:80" # alterei para evitar conflito com porta 80
-    volumes:
-      - ./workspace/:/var/www/html/
-    depends_on:
-      - krayin-mysql
-      - krayin-redis
-
   krayin-mysql:
     image: mysql:8.0
-    container_name: krayin-mysql
-    command: --default-authentication-plugin=mysql_native_password
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: krayin
       MYSQL_USER: krayin
       MYSQL_PASSWORD: krayin
-    ports:
-      - "3307:3306" # alterei para evitar conflito com MySQL local
+    command: --default-authentication-plugin=mysql_native_password
     volumes:
-      - ./.configs/mysql-data:/var/lib/mysql/
-
-  krayin-redis:
-    image: redis:6.2-alpine
-    container_name: krayin-redis
-    command: redis-server --save 20 1 --loglevel warning
+      - mysql_data:/var/lib/mysql
     ports:
-      - "6380:6379" # alterei para evitar conflito com Redis local
-    volumes:
-      - ./.configs/redis-data:/data
+      - "3307:3306" # Porta externa alterada para evitar conflito
 
   krayin-phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: krayin-phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
     environment:
       PMA_HOST: krayin-mysql
       PMA_USER: root
       PMA_PASSWORD: root
-      UPLOAD_LIMIT: 512M
     ports:
-      - "8082:80"
+      - "8081:80" # Porta externa alterada
     depends_on:
       - krayin-mysql
 
+  krayin-redis:
+    image: redis:6.2
+    restart: always
+    sysctls:
+      net.core.somaxconn: 1024
+      vm.overcommit_memory: 1
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379" # Porta externa alterada
+    volumes:
+      - redis_data:/data
+
   krayin-mailhog:
     image: mailhog/mailhog
-    container_name: krayin-mailhog
-    logging:
-      driver: "none"
+    restart: always
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "8026:8025" # Porta externa alterada
+    logging:
+      driver: "json-file" # Corrige problema de logs
+
+  krayin-php-apache:
+    image: krayin/krayin:latest
+    restart: always
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_HOST: krayin-mysql
+      DB_PORT: 3306
+      DB_DATABASE: krayin
+      DB_USERNAME: krayin
+      DB_PASSWORD: krayin
+      REDIS_HOST: krayin-redis
+    ports:
+      - "8090:80" # Porta externa alterada
+    depends_on:
+      - krayin-mysql
+      - krayin-redis
+      - krayin-mailhog
+    volumes:
+      - ./code:/var/www/html
+
+volumes:
+  mysql_data:
+  redis_data:
