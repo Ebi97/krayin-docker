@@ -1,9 +1,6 @@
-version: "3.8"
-
 services:
   krayin-mysql:
     image: mysql:8.0
-    container_name: krayin-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -17,7 +14,6 @@ services:
 
   krayin-phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
-    container_name: krayin-phpmyadmin
     restart: always
     environment:
       PMA_HOST: krayin-mysql
@@ -29,21 +25,21 @@ services:
 
   krayin-redis:
     image: redis:6.2
-    container_name: krayin-redis
     restart: always
     ports:
       - "6379:6379"
 
   krayin-mailhog:
     image: mailhog/mailhog:latest
-    container_name: krayin-mailhog
     restart: always
     ports:
       - "8025:8025"
 
   krayin-php-apache:
-    image: ghcr.io/krayin/laravel-crm:latest
-    container_name: krayin-php-apache
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: krayin-php-apache
     restart: always
     environment:
       APP_ENV: production
