@@ -1,71 +1,68 @@
+version: "3.8"
+
 services:
   krayin-mysql:
     image: mysql:8.0
+    container_name: krayin-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: krayin
       MYSQL_USER: krayin
       MYSQL_PASSWORD: krayin
-    command: --default-authentication-plugin=mysql_native_password
-    volumes:
-      - mysql_data:/var/lib/mysql
     ports:
-      - "3307:3306" # Porta externa alterada para evitar conflito
+      - "3306:3306"
+    volumes:
+      - krayin_mysql_data:/var/lib/mysql
 
   krayin-phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
+    container_name: krayin-phpmyadmin
     restart: always
     environment:
       PMA_HOST: krayin-mysql
-      PMA_USER: root
-      PMA_PASSWORD: root
+      PMA_PORT: 3306
     ports:
-      - "8081:80" # Porta externa alterada
+      - "8081:80"
     depends_on:
       - krayin-mysql
 
   krayin-redis:
     image: redis:6.2
+    container_name: krayin-redis
     restart: always
-    sysctls:
-      net.core.somaxconn: 1024
-      vm.overcommit_memory: 1
-    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6380:6379" # Porta externa alterada
-    volumes:
-      - redis_data:/data
+      - "6379:6379"
 
   krayin-mailhog:
-    image: mailhog/mailhog
+    image: mailhog/mailhog:latest
+    container_name: krayin-mailhog
     restart: always
     ports:
-      - "8026:8025" # Porta externa alterada
-    logging:
-      driver: "json-file" # Corrige problema de logs
+      - "8025:8025"
 
   krayin-php-apache:
-    image: krayin/krayin:latest
+    image: ghcr.io/krayin/laravel-crm:latest
+    container_name: krayin-php-apache
     restart: always
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
+      DB_CONNECTION: mysql
       DB_HOST: krayin-mysql
       DB_PORT: 3306
       DB_DATABASE: krayin
       DB_USERNAME: krayin
       DB_PASSWORD: krayin
       REDIS_HOST: krayin-redis
+      MAIL_HOST: krayin-mailhog
+      MAIL_PORT: 1025
     ports:
-      - "8090:80" # Porta externa alterada
+      - "8090:80"
     depends_on:
       - krayin-mysql
       - krayin-redis
       - krayin-mailhog
-    volumes:
-      - ./code:/var/www/html
 
 volumes:
-  mysql_data:
-  redis_data:
+  krayin_mysql_data:
