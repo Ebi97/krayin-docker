@@ -1,53 +1,65 @@
-version: "3.1"
+version: "3.8"
 
 services:
   krayin-php-apache:
     build:
-      args:
-        container_project_path: /var/www/html/
-        uid: 1000              # UID padrão para www-data no Linux
-        user: www-data         # Usuário fixo para evitar falha
       context: .
       dockerfile: ./Dockerfile
+      args:
+        container_project_path: /var/www/html
+        uid: 1000
+        user: www-data
     image: krayin-php-apache
+    container_name: krayin-php-apache
     ports:
-      - "80:80"
+      - "8081:80" # alterei para evitar conflito com porta 80
     volumes:
       - ./workspace/:/var/www/html/
+    depends_on:
+      - krayin-mysql
+      - krayin-redis
 
   krayin-mysql:
     image: mysql:8.0
+    container_name: krayin-mysql
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_ROOT_HOST: "%"
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: krayin
+      MYSQL_USER: krayin
+      MYSQL_PASSWORD: krayin
     ports:
-      - "3306:3306"
+      - "3307:3306" # alterei para evitar conflito com MySQL local
     volumes:
       - ./.configs/mysql-data:/var/lib/mysql/
 
   krayin-redis:
     image: redis:6.2-alpine
-    ports:
-      - "6379:6379"
+    container_name: krayin-redis
     command: redis-server --save 20 1 --loglevel warning
+    ports:
+      - "6380:6379" # alterei para evitar conflito com Redis local
     volumes:
       - ./.configs/redis-data:/data
 
   krayin-phpmyadmin:
     image: phpmyadmin:latest
+    container_name: krayin-phpmyadmin
     environment:
       PMA_HOST: krayin-mysql
       PMA_USER: root
       PMA_PASSWORD: root
       UPLOAD_LIMIT: 512M
     ports:
-      - "8080:80"
+      - "8082:80"
+    depends_on:
+      - krayin-mysql
 
   krayin-mailhog:
     image: mailhog/mailhog
+    container_name: krayin-mailhog
     logging:
-      driver: 'none' # Desativa logs para evitar uso de disco
+      driver: "none"
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web interface
+      - "1025:1025"
+      - "8025:8025"
