@@ -44,6 +44,7 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
+      APP_KEY: ""
       DB_CONNECTION: mysql
       DB_HOST: krayin-mysql
       DB_PORT: 3306
@@ -51,14 +52,31 @@ services:
       DB_USERNAME: krayin
       DB_PASSWORD: krayin
       REDIS_HOST: krayin-redis
+      MAIL_MAILER: smtp
       MAIL_HOST: krayin-mailhog
       MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: admin@krayin.local
+      MAIL_FROM_NAME: KrayinCRM
     ports:
       - "8090:80"
+    volumes:
+      - ./workspace:/var/www/html
     depends_on:
       - krayin-mysql
       - krayin-redis
       - krayin-mailhog
+    command: >
+      sh -c "
+        if [ ! -f /var/www/html/.env ]; then
+          cp .env.example .env && \
+          php artisan key:generate && \
+          composer install && \
+          npm install && npm run dev && \
+          php artisan migrate --force && \
+          chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+        fi &&
+        apache2-foreground
+      "
 
 volumes:
   krayin_mysql_data:
